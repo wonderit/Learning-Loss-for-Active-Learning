@@ -34,6 +34,25 @@ from data.sampler import SubsetSequentialSampler
 # Device configuration
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
+# Params
+PARAMS = {
+    'num_train': 50000,
+    'num_val': 0,
+    'batch_size': 128,
+    'subset_size': 10000,
+    'k': 1000,
+    'margin': 1.0,
+    'margin_lambda': 1.0,
+    'trials': 3,
+    'cycles': 10,
+    'epoch': 200,
+    'lr': 0.1,
+    'milestones': [160],
+    'epoch_l': 120,
+    'sgd_momentum': 0.9,
+    'weight_decay': 5e-4,
+}
+
 # Seed
 random.seed("Wonsuk Kim")
 torch.manual_seed(0)
@@ -92,8 +111,8 @@ def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, v
     global iters
 
     for data in tqdm(dataloaders['train'], leave=False, total=len(dataloaders['train'])):
-        inputs = data[0].cuda()
-        labels = data[1].cuda()
+        inputs = data[0].to(device)
+        labels = data[1].to(device)
         iters += 1
 
         optimizers['backbone'].zero_grad()
@@ -208,24 +227,24 @@ def get_uncertainty(models, unlabeled_loader):
     
     return uncertainty.cpu()
 
-
+vis = None
 ##
 # Main
 if __name__ == '__main__':
     # vis = visdom.Visdom(server='http://localhost', port=9000)
     plot_data = {'X': [], 'Y': [], 'legend': ['Backbone Loss', 'Module Loss', 'Total Loss']}
 
-    for trial in range(TRIALS):
+    for trial in range(PARAMS['trials']):
         # Initialize a labeled dataset by randomly sampling K=ADDENDUM=1,000 data points from the entire dataset.
-        indices = list(range(NUM_TRAIN))
+        indices = list(range(PARAMS['num_train']))
         random.shuffle(indices)
-        labeled_set = indices[:ADDENDUM]
-        unlabeled_set = indices[ADDENDUM:]
+        labeled_set = indices[:PARAMS['k']]
+        unlabeled_set = indices[PARAMS['k']:]
         
-        train_loader = DataLoader(cifar10_train, batch_size=BATCH, 
+        train_loader = DataLoader(cifar10_train, batch_size=PARAMS['batch_size'],
                                   sampler=SubsetRandomSampler(labeled_set), 
                                   pin_memory=True)
-        test_loader  = DataLoader(cifar10_test, batch_size=BATCH)
+        test_loader  = DataLoader(cifar10_test, batch_size=PARAMS['batch_size'])
         dataloaders  = {'train': train_loader, 'test': test_loader}
         
         # Model
@@ -238,12 +257,12 @@ if __name__ == '__main__':
         for cycle in range(CYCLES):
             # Loss, criterion and scheduler (re)initialization
             criterion      = nn.CrossEntropyLoss(reduction='none')
-            optim_backbone = optim.SGD(models['backbone'].parameters(), lr=LR, 
-                                    momentum=MOMENTUM, weight_decay=WDECAY)
-            optim_module   = optim.SGD(models['module'].parameters(), lr=LR, 
-                                    momentum=MOMENTUM, weight_decay=WDECAY)
-            sched_backbone = lr_scheduler.MultiStepLR(optim_backbone, milestones=MILESTONES)
-            sched_module   = lr_scheduler.MultiStepLR(optim_module, milestones=MILESTONES)
+            optim_backbone = optim.SGD(models['backbone'].parameters(), lr=PARAMS['lr'],
+                                    momentum=MOMENTUM, weight_decay=PARAMS['weight_decay'])
+            optim_module   = optim.SGD(models['module'].parameters(), lr=PARAMS['lr'],
+                                    momentum=MOMENTUM, weight_decay=PARAMS['weight_decay'])
+            sched_backbone = lr_scheduler.MultiStepLR(optim_backbone, milestones=PARAMS['milestones'])
+            sched_module   = lr_scheduler.MultiStepLR(optim_module, milestones=PARAMS['milestones'])
 
             optimizers = {'backbone': optim_backbone, 'module': optim_module}
             schedulers = {'backbone': sched_backbone, 'module': sched_module}
@@ -251,17 +270,17 @@ if __name__ == '__main__':
             # Training and test
             train(models, criterion, optimizers, schedulers, dataloaders, EPOCH, EPOCHL, vis, plot_data)
             acc = test(models, dataloaders, mode='test')
-            print('Trial {}/{} || Cycle {}/{} || Label set size {}: Test acc {}'.format(trial+1, TRIALS, cycle+1, CYCLES, len(labeled_set), acc))
+            print('Trial {}/{} || Cycle {}/{} || Label set size {}: Test acc {}'.format(trial+1, PARAMS['trials'], cycle+1, PARAMS['cycles'], len(labeled_set), acc))
 
             ##
             #  Update the labeled dataset via loss prediction-based uncertainty measurement
 
             # Randomly sample 10000 unlabeled data points
             random.shuffle(unlabeled_set)
-            subset = unlabeled_set[:SUBSET]
+            subset = unlabeled_set[:PARAMS['subset_size']]
 
             # Create unlabeled dataloader for the unlabeled subset
-            unlabeled_loader = DataLoader(cifar10_unlabeled, batch_size=BATCH, 
+            unlabeled_loader = DataLoader(cifar10_unlabeled, batch_size=PARAMS['batch_size'],
                                           sampler=SubsetSequentialSampler(subset), # more convenient if we maintain the order of subset
                                           pin_memory=True)
 
@@ -272,11 +291,11 @@ if __name__ == '__main__':
             arg = np.argsort(uncertainty)
             
             # Update the labeled dataset and the unlabeled dataset, respectively
-            labeled_set += list(torch.tensor(subset)[arg][-ADDENDUM:].numpy())
-            unlabeled_set = list(torch.tensor(subset)[arg][:-ADDENDUM].numpy()) + unlabeled_set[SUBSET:]
+            labeled_set += list(torch.tensor(subset)[arg][-PARAMS['k']:].numpy())
+            unlabeled_set = list(torch.tensor(subset)[arg][:-PARAMS['k']].numpy()) + unlabeled_set[PARAMS['subset_size']:]
 
             # Create a new dataloader for the updated labeled dataset
-            dataloaders['train'] = DataLoader(cifar10_train, batch_size=BATCH, 
+            dataloaders['train'] = DataLoader(cifar10_train, batch_size=PARAMS['batch_size'],
                                               sampler=SubsetRandomSampler(labeled_set), 
                                               pin_memory=True)
         
