@@ -23,7 +23,6 @@ import torchvision.models as models
 from torchvision.datasets import CIFAR100, CIFAR10
 
 # Utils
-import visdom
 from tqdm import tqdm
 
 # Custom
@@ -125,19 +124,19 @@ def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, v
                 m_module_loss.item(),
                 loss.item()
             ])
-            vis.line(
-                X=np.stack([np.array(plot_data['X'])] * len(plot_data['legend']), 1),
-                Y=np.array(plot_data['Y']),
-                opts={
-                    'title': 'Loss over Time',
-                    'legend': plot_data['legend'],
-                    'xlabel': 'Iterations',
-                    'ylabel': 'Loss',
-                    'width': 1200,
-                    'height': 390,
-                },
-                win=1
-            )
+            # vis.line(
+            #     X=np.stack([np.array(plot_data['X'])] * len(plot_data['legend']), 1),
+            #     Y=np.array(plot_data['Y']),
+            #     opts={
+            #         'title': 'Loss over Time',
+            #         'legend': plot_data['legend'],
+            #         'xlabel': 'Iterations',
+            #         'ylabel': 'Loss',
+            #         'width': 1200,
+            #         'height': 390,
+            #     },
+            #     win=1
+            # )
 
 #
 def test(models, dataloaders, mode='val'):
@@ -210,7 +209,7 @@ def get_uncertainty(models, unlabeled_loader):
 ##
 # Main
 if __name__ == '__main__':
-    vis = visdom.Visdom(server='http://localhost', port=9000)
+    # vis = visdom.Visdom(server='http://localhost', port=9000)
     plot_data = {'X': [], 'Y': [], 'legend': ['Backbone Loss', 'Module Loss', 'Total Loss']}
 
     for trial in range(TRIALS):
