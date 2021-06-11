@@ -31,8 +31,11 @@ import models.lossnet as lossnet
 from config import *
 from data.sampler import SubsetSequentialSampler
 
+# Device configuration
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
 # Seed
-random.seed("Inyoung Cho")
+random.seed("Wonsuk Kim")
 torch.manual_seed(0)
 torch.backends.cudnn.deterministic = True
 
@@ -148,8 +151,8 @@ def test(models, dataloaders, mode='val'):
     correct = 0
     with torch.no_grad():
         for (inputs, labels) in dataloaders[mode]:
-            inputs = inputs.cuda()
-            labels = labels.cuda()
+            inputs = inputs.to(device)
+            labels = labels.to(device)
 
             scores, _ = models['backbone'](inputs)
             _, preds = torch.max(scores.data, 1)
@@ -190,12 +193,12 @@ def train(models, criterion, optimizers, schedulers, dataloaders, num_epochs, ep
 def get_uncertainty(models, unlabeled_loader):
     models['backbone'].eval()
     models['module'].eval()
-    uncertainty = torch.tensor([]).cuda()
+    uncertainty = torch.tensor([]).to(device)
 
     with torch.no_grad():
         for (inputs, labels) in unlabeled_loader:
-            inputs = inputs.cuda()
-            # labels = labels.cuda()
+            inputs = inputs.to(device)
+            # labels = labels.to(device)
 
             scores, features = models['backbone'](inputs)
             pred_loss = models['module'](features) # pred_loss = criterion(scores, labels) # ground truth loss
@@ -226,8 +229,8 @@ if __name__ == '__main__':
         dataloaders  = {'train': train_loader, 'test': test_loader}
         
         # Model
-        resnet18    = resnet.ResNet18(num_classes=10).cuda()
-        loss_module = lossnet.LossNet().cuda()
+        resnet18    = resnet.ResNet18(num_classes=10).to(device)
+        loss_module = lossnet.LossNet().to(device)
         models      = {'backbone': resnet18, 'module': loss_module}
         torch.backends.cudnn.benchmark = False
 
