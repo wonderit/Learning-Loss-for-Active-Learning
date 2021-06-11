@@ -254,13 +254,13 @@ if __name__ == '__main__':
         torch.backends.cudnn.benchmark = False
 
         # Active learning cycles
-        for cycle in range(CYCLES):
+        for cycle in range(PARAMS['cycles']):
             # Loss, criterion and scheduler (re)initialization
             criterion      = nn.CrossEntropyLoss(reduction='none')
             optim_backbone = optim.SGD(models['backbone'].parameters(), lr=PARAMS['lr'],
-                                    momentum=MOMENTUM, weight_decay=PARAMS['weight_decay'])
+                                    momentum=PARAMS['sgd_momentum'], weight_decay=PARAMS['weight_decay'])
             optim_module   = optim.SGD(models['module'].parameters(), lr=PARAMS['lr'],
-                                    momentum=MOMENTUM, weight_decay=PARAMS['weight_decay'])
+                                    momentum=PARAMS['sgd_momentum'], weight_decay=PARAMS['weight_decay'])
             sched_backbone = lr_scheduler.MultiStepLR(optim_backbone, milestones=PARAMS['milestones'])
             sched_module   = lr_scheduler.MultiStepLR(optim_module, milestones=PARAMS['milestones'])
 
