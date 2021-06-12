@@ -66,14 +66,14 @@ run = neptune.init(project='wonderit/ll4al',
 PARAMS = {
     'num_train': 50000,
     'num_val': 0,
-    'batch_size': 10,
-    'subset_size': 100,
-    'k': 10,
+    'batch_size': 128,
+    'subset_size': 10000,
+    'k': 200,
     'margin': 1.0,
     'lpl_lambda': 1.0,
     'trials': 1,
-    'cycles': 5,
-    'epoch': 2,
+    'cycles': 10,
+    'epoch': 200,
     'lr': 0.1,
     'milestones': [160],
     'epoch_l': 120,
@@ -216,13 +216,9 @@ def ua_loss(outputs, labels, t_ua, beta, ua_lambda):
 
 
 def TeacherBoundedLoss(out_s, out_t, labels):
-    print(out_t.shape, labels.shape)
-    print(out_t, labels)
     mse_t = (out_t - labels) ** 2
     mse_s = (out_s - labels) ** 2
-
     flag = (mse_s - mse_t) > 0
-    print(flag)
     loss = (flag * mse_s).mean()
     return loss
 
@@ -281,6 +277,8 @@ def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, c
         if models.get('have_teacher', False):
             teacher_outputs, teacher_feature = models['teacher_backbone'](inputs)
             teacher_pred_loss = models['teacher_module'](teacher_feature)
+            teacher_pred_loss = teacher_pred_loss.view(teacher_pred_loss.size(0))
+
             kd_loss = SoftTarget(scores, teacher_outputs)
             run[f'train/trial{trial}/cycle{cycle}/batch/kd_loss({PARAMS["kd_type"]})'].log(kd_loss.item())
             loss = loss + PARAMS['kd_lambda'] * kd_loss
