@@ -375,7 +375,9 @@ def get_uncertainty(models, unlabeled_loader):
             pred_loss = pred_loss.view(pred_loss.size(0))
 
             uncertainty = torch.cat((uncertainty, pred_loss), 0)
-            pseudo_label = torch.cat((pseudo_label, scores), 0)
+
+            _, preds = torch.max(scores.data, 1)
+            pseudo_label = torch.cat((pseudo_label, preds), 0)
 
     return uncertainty.cpu(), pseudo_label.cpu()
 
