@@ -474,9 +474,11 @@ if __name__ == '__main__':
                 labeled_indices = list(torch.tensor(subset)[arg][:PARAMS['k']].numpy())
                 labeled_set += labeled_indices
                 unlabeled_set = list(torch.tensor(subset)[arg][PARAMS['k']:].numpy()) + unlabeled_set[PARAMS['subset_size']:]
-                print('prev targets:', cifar10_train.targets[labeled_indices])
-                cifar10_train.targets[labeled_indices] = pseudo_label[labeled_indices]
-                print('prev targets:', cifar10_train.targets[labeled_indices])
+                print('prev targets:', cifar10_train.targets[labeled_indices[0]])
+
+                for l_i in labeled_indices:
+                    cifar10_train.targets[l_i] = pseudo_label[l_i]
+                print(f'prev targets:{labeled_indices[0]}', cifar10_train.targets[labeled_indices[0]])
 
             # Create a new dataloader for the updated labeled dataset
             dataloaders['train'] = DataLoader(cifar10_train, batch_size=PARAMS['batch_size'],
