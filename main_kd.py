@@ -68,7 +68,7 @@ PARAMS = {
     'num_val': 0,
     'batch_size': 128,
     'subset_size': 10000,
-    'k': 1000,
+    'k': 200,
     'margin': 1.0,
     'lpl_lambda': 1.0,
     'trials': 3,
