@@ -52,7 +52,7 @@ import neptune.new as neptune
 # Create Neptune Run
 
 # In[3]:
-IS_TEST = True
+IS_TEST = False
 
 if not IS_TEST:
     run = neptune.init(project='wonderit/ll4al',
@@ -69,11 +69,11 @@ PARAMS = {
     'num_val': 0,
     'batch_size': 128,
     'subset_size': 10000,
-    'k': 100,
+    'k': 200,
     'margin': 1.0,
     'lpl_lambda': 1.0,
     'trials': 3,
-    'cycles': 5,
+    'cycles': 10,
     'epoch': 200,
     'lr': 0.1,
     'milestones': [160],
