@@ -458,7 +458,7 @@ if __name__ == '__main__':
                                           pin_memory=True)
 
             # Measure uncertainty of each data points in the subset
-            uncertainty = get_uncertainty(models, unlabeled_loader)
+            uncertainty, pseudo_label = get_uncertainty(models, unlabeled_loader)
 
 
             # Index in ascending order
@@ -470,7 +470,13 @@ if __name__ == '__main__':
 
             # add pseudo label for less uncertainty
             if PARAMS['is_pl']:
-                arg_pl = np.argsort(-uncertainty)
+                # add less k data
+                labeled_indices = list(torch.tensor(subset)[arg][:PARAMS['k']].numpy())
+                labeled_set += labeled_indices
+                unlabeled_set = list(torch.tensor(subset)[arg][PARAMS['k']:].numpy()) + unlabeled_set[PARAMS['subset_size']:]
+                print('prev targets:', cifar10_train.targets[labeled_indices])
+                cifar10_train.targets[labeled_indices] = pseudo_label[labeled_indices]
+                print('prev targets:', cifar10_train.targets[labeled_indices])
 
             # Create a new dataloader for the updated labeled dataset
             dataloaders['train'] = DataLoader(cifar10_train, batch_size=PARAMS['batch_size'],
