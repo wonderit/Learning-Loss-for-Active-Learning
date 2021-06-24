@@ -2,7 +2,7 @@
 # coding: utf-8
 
 # Active Learning Procedure in PyTorch.
-# 
+#
 # Reference:
 # [Yoo et al. 2019] Learning Loss for Active Learning (https://arxiv.org/abs/1905.03677)
 # '''
@@ -36,18 +36,19 @@ from torch.utils.data.sampler import SubsetRandomSampler
 # Torchvison
 import torchvision.transforms as T
 import torch.nn.functional as F
-from torchvision.datasets import CIFAR100, CIFAR10
 
 # Utils
 from tqdm import tqdm
 
 # Custom
-import models.resnet as resnet
-import models.lossnet as lossnet
+import models.resnetcem as resnet
+import models.lossnetcem as lossnet
 from data.sampler import SubsetSequentialSampler
 
 import neptune.new as neptune
+from cem import CEMDataset
 
+from sklearn.metrics import r2_score, mean_squared_error
 
 # Create Neptune Run
 
@@ -64,7 +65,7 @@ run = neptune.init(project='wonderit/maxwellfdfd-ll4al',
 
 # Params
 PARAMS = {
-    'num_train': 50000,
+    'num_train': 9000,
     'num_val': 0,
     'batch_size': 128,
     'subset_size': 10000,
@@ -123,28 +124,15 @@ np.random.seed(random_seed)
 
 ##
 # Data
-data_dir = 'data/CIFAR10'
-data_tfms = {
-    'train':
-            T.Compose([
-            T.RandomHorizontalFlip(),
-            T.RandomCrop(size=32, padding=4),
-            T.ToTensor(),
-            T.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]) # T.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761)) # CIFAR-100
-        ]),
-    'test':
-            T.Compose([
-            T.ToTensor(),
-            T.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]) # T.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761)) # CIFAR-100
-        ])
+data_dir = './maxwellfdfd'
 
-}
-cifar10_train = CIFAR10(data_dir, train=True, download=True, transform=data_tfms['train'])
-cifar10_unlabeled   = CIFAR10(data_dir, train=True, download=True, transform=data_tfms['test'])
-cifar10_test  = CIFAR10(data_dir, train=False, download=True, transform=data_tfms['test'])
-dataset_size = {'train': len(cifar10_train), 'test': len(cifar10_test)}
+cem_train = CEMDataset('./maxwellfdfd', train=True)
+cem_unlabeled = CEMDataset('./maxwellfdfd', train=True)
+cem_test = CEMDataset('./maxwellfdfd', train=False)
 
-checkpoint_dir = os.path.join('./cifar10', 'train', 'weights')
+dataset_size = {'train': len(cem_train), 'test': len(cem_test)}
+
+checkpoint_dir = os.path.join('./cem', 'train', 'weights')
 if not os.path.exists(checkpoint_dir):
     os.makedirs(checkpoint_dir)
 
@@ -153,7 +141,6 @@ if not os.path.exists(checkpoint_dir):
 
 
 run["config/dataset/path"] = data_dir
-run["config/dataset/transforms"] = data_tfms
 run["config/dataset/size"] = dataset_size
 
 
@@ -249,7 +236,8 @@ def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, c
         models['teacher_module'].train(mode=False)
 
     global iters
-
+    m_backbone_loss = 0
+    count = 0
     for data in tqdm(dataloaders['train'], leave=False, total=len(dataloaders['train'])):
         inputs = data[0].to(PARAMS['device'])
         labels = data[1].to(PARAMS['device'])
@@ -258,7 +246,7 @@ def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, c
         optimizers['backbone'].zero_grad()
         optimizers['module'].zero_grad()
 
-        scores, features = models['backbone'](inputs)
+        scores, features = models['backbone'](inputs.float())
         target_loss = criterion(scores, labels)
 
         if epoch > epoch_loss:
@@ -266,16 +254,18 @@ def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, c
             features[0] = features[0].detach()
             features[1] = features[1].detach()
             features[2] = features[2].detach()
-            features[3] = features[3].detach()
+            # features[3] = features[3].detach()
         pred_loss = models['module'](features)
         pred_loss = pred_loss.view(pred_loss.size(0))
 
+        # loss for multi-output
+        target_loss = torch.mean(target_loss, dim=1)
         m_backbone_loss = torch.sum(target_loss) / target_loss.size(0)
         m_module_loss   = LossPredLoss(pred_loss, target_loss, margin=PARAMS['margin'])
         loss            = m_backbone_loss + PARAMS['lpl_lambda'] * m_module_loss
 
         if models.get('have_teacher', False):
-            teacher_outputs, teacher_feature = models['teacher_backbone'](inputs)
+            teacher_outputs, teacher_feature = models['teacher_backbone'](inputs.float())
             teacher_pred_loss = models['teacher_module'](teacher_feature)
             teacher_pred_loss = teacher_pred_loss.view(teacher_pred_loss.size(0))
 
@@ -309,19 +299,32 @@ def test(models, dataloaders, mode='val'):
     models['backbone'].eval()
     models['module'].eval()
 
-    total = 0
-    correct = 0
+    test_r2 = 0
+    test_rmse = 0
     with torch.no_grad():
+        total = 0
+        pred_array = []
+        labels_array = []
         for (inputs, labels) in dataloaders[mode]:
             inputs = inputs.to(PARAMS['device'])
             labels = labels.to(PARAMS['device'])
+            scores, _ = models['backbone'](inputs.float())
 
-            scores, _ = models['backbone'](inputs)
-            _, preds = torch.max(scores.data, 1)
+            pred_array.extend(scores.cpu().numpy().reshape(-1))
+            labels_array.extend(labels.cpu().numpy().reshape(-1))
             total += labels.size(0)
-            correct += (preds == labels).sum().item()
 
-    return 100 * correct / total
+        pred_array = np.array(pred_array)
+        labels_array = np.array(labels_array)
+
+        pred_array = pred_array.reshape(-1)
+        labels_array = labels_array.reshape(-1)
+
+        test_rmse = np.sqrt(mean_squared_error(labels_array, pred_array))
+        test_r2 = r2_score(y_true=labels_array, y_pred=pred_array, multioutput='uniform_average')
+
+
+    return test_rmse, test_r2
 
 #
 def train(models, criterion, optimizers, schedulers, dataloaders, num_epochs, epoch_loss, cycle_number, trial_number):
@@ -361,7 +364,7 @@ def get_uncertainty(models, unlabeled_loader):
             inputs = inputs.to(PARAMS['device'])
             # labels = labels.to(device)
 
-            scores, features = models['backbone'](inputs)
+            scores, features = models['backbone'](inputs.float())
             pred_loss = models['module'](features) # pred_loss = criterion(scores, labels) # ground truth loss
             pred_loss = pred_loss.view(pred_loss.size(0))
 
@@ -383,14 +386,14 @@ if __name__ == '__main__':
         labeled_set = indices[:PARAMS['k']]
         unlabeled_set = indices[PARAMS['k']:]
 
-        train_loader = DataLoader(cifar10_train, batch_size=PARAMS['batch_size'],
+        train_loader = DataLoader(cem_train, batch_size=PARAMS['batch_size'],
                                   sampler=SubsetRandomSampler(labeled_set),
                                   pin_memory=True)
-        test_loader  = DataLoader(cifar10_test, batch_size=PARAMS['batch_size'])
+        test_loader  = DataLoader(cem_test, batch_size=PARAMS['batch_size'])
         dataloaders  = {'train': train_loader, 'test': test_loader}
 
         # Model
-        resnet18    = resnet.ResNet18(num_classes=10).to(PARAMS['device'])
+        resnet18    = resnet.ResNet18(num_classes=24).to(PARAMS['device'])
         loss_module = lossnet.LossNet().to(PARAMS['device'])
         models      = {'backbone': resnet18, 'module': loss_module}
 
@@ -406,7 +409,7 @@ if __name__ == '__main__':
         for cycle in range(PARAMS['cycles']):
             # Re init model
             if PARAMS['re-init-backbone'] and cycle > 0:
-                resnet18    = resnet.ResNet18(num_classes=10).to(PARAMS['device'])
+                resnet18    = resnet.ResNet18(num_classes=24).to(PARAMS['device'])
                 models['backbone'] = resnet18
 
             if PARAMS['re-init-module'] and cycle > 0:
@@ -414,7 +417,8 @@ if __name__ == '__main__':
                 models['module'] = loss_module
 
             # Loss, criterion and scheduler (re)initialization
-            criterion      = nn.CrossEntropyLoss(reduction='none')
+            # criterion      = nn.CrossEntropyLoss(reduction='none')
+            criterion = nn.L1Loss(reduction='none')
             optim_backbone = optim.SGD(models['backbone'].parameters(), lr=PARAMS['lr'],
                                     momentum=PARAMS['sgd_momentum'], weight_decay=PARAMS['weight_decay'])
             optim_module   = optim.SGD(models['module'].parameters(), lr=PARAMS['lr'],
@@ -427,11 +431,12 @@ if __name__ == '__main__':
 
             # Training and test
             train(models, criterion, optimizers, schedulers, dataloaders, PARAMS['epoch'], PARAMS['epoch_l'], cycle, trial)
-            acc = test(models, dataloaders, mode='test')
-            print('Trial {}/{} || Cycle {}/{} || Label set size {}: Test acc {}'.format(trial+1, PARAMS['trials'], cycle+1, PARAMS['cycles'], len(labeled_set), acc))
+            rmse, r2 = test(models, dataloaders, mode='test')
+            print('Trial {}/{} || Cycle {}/{} || Label set size {}: Test rmse {}, r2 {}'.format(trial+1, PARAMS['trials'], cycle+1, PARAMS['cycles'], len(labeled_set), rmse, r2))
 
             # Log acc
-            run[f'test/trial_{trial}/acc'].log(acc)
+            run[f'test/trial_{trial}/rmse'].log(rmse)
+            run[f'test/trial_{trial}/r2'].log(r2)
             ##
             #  Update the labeled dataset via loss prediction-based uncertainty measurement
 
@@ -440,7 +445,7 @@ if __name__ == '__main__':
             subset = unlabeled_set[:PARAMS['subset_size']]
 
             # Create unlabeled dataloader for the unlabeled subset
-            unlabeled_loader = DataLoader(cifar10_unlabeled, batch_size=PARAMS['batch_size'],
+            unlabeled_loader = DataLoader(cem_unlabeled, batch_size=PARAMS['batch_size'],
                                           sampler=SubsetSequentialSampler(subset), # more convenient if we maintain the order of subset
                                           pin_memory=True)
 
@@ -456,7 +461,7 @@ if __name__ == '__main__':
             unlabeled_set = list(torch.tensor(subset)[arg][:-PARAMS['k']].numpy()) + unlabeled_set[PARAMS['subset_size']:]
 
             # Create a new dataloader for the updated labeled dataset
-            dataloaders['train'] = DataLoader(cifar10_train, batch_size=PARAMS['batch_size'],
+            dataloaders['train'] = DataLoader(cem_train, batch_size=PARAMS['batch_size'],
                                               sampler=SubsetRandomSampler(labeled_set),
                                               pin_memory=True)
 
@@ -466,7 +471,7 @@ if __name__ == '__main__':
                     'state_dict_backbone': models['backbone'].state_dict(),
                     'state_dict_module': models['module'].state_dict()
                 },
-                './cifar10/train/weights/active_resnet18_cifar10_trial{}.pth'.format(trial))
+                './cifar10/train/weights/active_resnet18_cem_trial{}.pth'.format(trial))
 
 
 # In[ ]:
