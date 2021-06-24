@@ -82,7 +82,7 @@ PARAMS = {
     'weight_decay': 5e-4,
     'device': torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
     'kd_type': 'soft_target',
-    'is_kd': True,
+    'is_kd': False,
     'T': 4,
     'kd_lambda': 0.1,
     'is_ua': False,
@@ -94,10 +94,12 @@ PARAMS = {
     're-init-module': False,
     'is_tbr': False,
     'tbr_lambda': 0.5,
-    'is_pl': True
+    'is_pl': False,
+    'is_random': True,
+    'is_ll': False,
 }
 if IS_TEST:
-    PARAMS['epoch'] = 10
+    PARAMS['epoch'] = 10is
     PARAMS['k'] = 10
     PARAMS['cycles'] = 5
     PARAMS['trials'] = 1
@@ -278,7 +280,10 @@ def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, c
 
         m_backbone_loss = torch.sum(target_loss) / target_loss.size(0)
         m_module_loss   = LossPredLoss(pred_loss, target_loss, margin=PARAMS['margin'])
-        loss            = m_backbone_loss + PARAMS['lpl_lambda'] * m_module_loss
+        if PARAMS['is_ll']:
+            loss        = m_backbone_loss + PARAMS['lpl_lambda'] * m_module_loss
+        else:
+            loss        = m_backbone_loss
 
         if models.get('have_teacher', False):
             teacher_outputs, teacher_feature = models['teacher_backbone'](inputs)
@@ -458,21 +463,27 @@ if __name__ == '__main__':
             random.shuffle(unlabeled_set)
             subset = unlabeled_set[:PARAMS['subset_size']]
 
-            # Create unlabeled dataloader for the unlabeled subset
-            unlabeled_loader = DataLoader(cifar10_unlabeled, batch_size=PARAMS['batch_size'],
-                                          sampler=SubsetSequentialSampler(subset), # more convenient if we maintain the order of subset
-                                          pin_memory=True)
+            if PARAMS['is_random']:
+                # Update Random
+                labeled_set += list(torch.tensor(subset)[-PARAMS['k']:].numpy())
+                unlabeled_set = list(torch.tensor(subset)[:-PARAMS['k']].numpy()) + unlabeled_set[
+                                                                                         PARAMS['subset_size']:]
+            else:
+                # Create unlabeled dataloader for the unlabeled subset
+                unlabeled_loader = DataLoader(cifar10_unlabeled, batch_size=PARAMS['batch_size'],
+                                              sampler=SubsetSequentialSampler(subset), # more convenient if we maintain the order of subset
+                                              pin_memory=True)
 
-            # Measure uncertainty of each data points in the subset
-            uncertainty, pseudo_label = get_uncertainty(models, unlabeled_loader)
+                # Measure uncertainty of each data points in the subset
+                uncertainty, pseudo_label = get_uncertainty(models, unlabeled_loader)
 
 
-            # Index in ascending order
-            arg = np.argsort(uncertainty)
+                # Index in ascending order
+                arg = np.argsort(uncertainty)
 
-            # Update the labeled dataset and the unlabeled dataset, respectively
-            labeled_set += list(torch.tensor(subset)[arg][-PARAMS['k']:].numpy())
-            unlabeled_set = list(torch.tensor(subset)[arg][:-PARAMS['k']].numpy()) + unlabeled_set[PARAMS['subset_size']:]
+                # Update the labeled dataset and the unlabeled dataset, respectively
+                labeled_set += list(torch.tensor(subset)[arg][-PARAMS['k']:].numpy())
+                unlabeled_set = list(torch.tensor(subset)[arg][:-PARAMS['k']].numpy()) + unlabeled_set[PARAMS['subset_size']:]
 
             # add pseudo label for less uncertainty
             if PARAMS['is_pl']:
