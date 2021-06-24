@@ -94,6 +94,7 @@ PARAMS = {
     're-init-module': False,
     'is_tbr': False,
     'tbr_lambda': 0.5,
+    'is_random': False,
 }
 
 
@@ -444,21 +445,28 @@ if __name__ == '__main__':
             random.shuffle(unlabeled_set)
             subset = unlabeled_set[:PARAMS['subset_size']]
 
-            # Create unlabeled dataloader for the unlabeled subset
-            unlabeled_loader = DataLoader(cem_unlabeled, batch_size=PARAMS['batch_size'],
-                                          sampler=SubsetSequentialSampler(subset), # more convenient if we maintain the order of subset
-                                          pin_memory=True)
+            if PARAMS['is_random']:
+                # Update Random
+                labeled_set += list(torch.tensor(subset)[-PARAMS['k']:].numpy())
+                unlabeled_set = list(torch.tensor(subset)[:-PARAMS['k']].numpy()) + unlabeled_set[
+                                                                                    PARAMS['subset_size']:]
+            else:
+                # Create unlabeled dataloader for the unlabeled subset
+                unlabeled_loader = DataLoader(cem_unlabeled, batch_size=PARAMS['batch_size'],
+                                              sampler=SubsetSequentialSampler(subset),
+                                              # more convenient if we maintain the order of subset
+                                              pin_memory=True)
 
-            # Measure uncertainty of each data points in the subset
-            uncertainty = get_uncertainty(models, unlabeled_loader)
+                # Measure uncertainty of each data points in the subset
+                uncertainty = get_uncertainty(models, unlabeled_loader)
 
+                # Index in ascending order
+                arg = np.argsort(uncertainty)
 
-            # Index in ascending order
-            arg = np.argsort(uncertainty)
-
-            # Update the labeled dataset and the unlabeled dataset, respectively
-            labeled_set += list(torch.tensor(subset)[arg][-PARAMS['k']:].numpy())
-            unlabeled_set = list(torch.tensor(subset)[arg][:-PARAMS['k']].numpy()) + unlabeled_set[PARAMS['subset_size']:]
+                # Update the labeled dataset and the unlabeled dataset, respectively
+                labeled_set += list(torch.tensor(subset)[arg][-PARAMS['k']:].numpy())
+                unlabeled_set = list(torch.tensor(subset)[arg][:-PARAMS['k']].numpy()) + unlabeled_set[
+                                                                                         PARAMS['subset_size']:]
 
             # Create a new dataloader for the updated labeled dataset
             dataloaders['train'] = DataLoader(cem_train, batch_size=PARAMS['batch_size'],
