@@ -31,3 +31,9 @@ MANIFEST
 .vscode/settings.json
 *.pth
 .idea/
+
+.neptune
+maxwellfdfd/
+maxwellfdfd.zip
+.ipynb_checkpoints/
+data/
