@@ -479,7 +479,7 @@ if __name__ == '__main__':
                     'state_dict_backbone': models['backbone'].state_dict(),
                     'state_dict_module': models['module'].state_dict()
                 },
-                './cifar10/train/weights/active_resnet18_cem_trial{}.pth'.format(trial))
+                './models/active_resnet18_cem_trial{}.pth'.format(trial))
 
 
 # In[ ]:
