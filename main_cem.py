@@ -69,7 +69,7 @@ PARAMS = {
     'num_val': 0,
     'batch_size': 128,
     'subset_size': 10000,
-    'k': 500,
+    'k': 200,
     'margin': 1.0,
     'lpl_lambda': 1.0,
     'trials': 3,
@@ -90,10 +90,10 @@ PARAMS = {
     'ua_activation': 'sigmoid', # linear, relu
     'beta': 1.0,
     'ua_type': 'prediction_loss',  # prediction_loss, cross_entropy
-    're-init-backbone': False,
+    're-init-backbone': True,
     're-init-module': False,
     'is_tbr': False,
-    'tbr_lambda': 0.5,
+    'tbr_lambda': 0.9,
     'is_random': False,
 }
 
