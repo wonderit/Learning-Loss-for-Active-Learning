@@ -92,8 +92,8 @@ PARAMS = {
     'ua_type': 'prediction_loss',  # prediction_loss, cross_entropy
     're-init-backbone': True,
     're-init-module': False,
-    'is_tbr': False,
-    'tbr_lambda': 0.9,
+    'is_tbr': True,
+    'tbr_lambda': 0.1,
     'is_random': False,
 }
 
