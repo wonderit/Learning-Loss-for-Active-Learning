@@ -92,9 +92,12 @@ PARAMS = {
     'ua_type': 'prediction_loss',  # prediction_loss, cross_entropy
     're-init-backbone': True,
     're-init-module': False,
-    'is_tbr': True,
+    'is_tbr': False,
     'tbr_lambda': 0.1,
     'is_random': False,
+    'is_tor': True,
+    'tor_lambda': 0.1,
+    'tor_zscore': 2.0
 }
 
 
@@ -210,6 +213,14 @@ def TeacherBoundedLoss(out_s, out_t, labels):
     loss = (flag * mse_s).mean()
     return loss
 
+
+def TeacherOutlierRejection(out_s, out_t, labels):
+    mse_t = (out_t - labels) ** 2
+    z_flag_1 = ((mse_t - mse_t.mean()) / mse_t.std()) > PARAMS['tor_zscore']
+    z_flag_0 = ((mse_t - mse_t.mean()) / mse_t.std()) <= PARAMS['tor_zscore']
+    loss = (z_flag_1 * torch.sqrt(torch.abs(out_s - out_t) + 1e-7) + z_flag_0 * (out_s - labels) ** 2).mean()
+    return loss
+
 ##
 # Train Utils
 iters = 0
@@ -278,6 +289,11 @@ def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, c
                 tbr_loss = TeacherBoundedLoss(pred_loss, teacher_pred_loss, target_loss)
                 loss = loss + PARAMS['tbr_lambda'] * tbr_loss
                 run[f'train/trial{trial}/cycle{cycle}/batch/tbr_loss({PARAMS["tbr_lambda"]})'].log(tbr_loss.item())
+
+            if PARAMS['is_tbr']:
+                tor_loss = TeacherOutlierRejection(pred_loss, teacher_pred_loss, target_loss)
+                loss = loss + PARAMS['tor_lambda'] * tor_loss
+                run[f'train/trial{trial}/cycle{cycle}/batch/tor_loss({PARAMS["tor_lambda"]})'].log(tor_loss.item())
 
             if PARAMS['is_ua']:
                 teacher_uncertainty_normalized, teacher_uncertainty = UncertaintyAttentionLoss(teacher_outputs, teacher_pred_loss)
