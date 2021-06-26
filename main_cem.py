@@ -207,15 +207,15 @@ def ua_loss(outputs, labels, t_ua, beta, ua_lambda):
 
 
 def TeacherBoundedLoss(out_s, out_t, labels):
-    mse_t = (out_t - labels) ** 2
-    mse_s = (out_s - labels) ** 2
+    mse_t = torch.abs(out_t - labels)
+    mse_s = torch.abs(out_s - labels)
     flag = (mse_s - mse_t) > 0
     loss = (flag * mse_s).mean()
     return loss
 
 
 def TeacherOutlierRejection(out_s, out_t, labels):
-    mse_t = (out_t - labels) ** 2
+    mse_t = torch.abs(labels - out_t)
     z_flag_1 = ((mse_t - mse_t.mean()) / mse_t.std()) > PARAMS['tor_zscore']
     z_flag_0 = ((mse_t - mse_t.mean()) / mse_t.std()) <= PARAMS['tor_zscore']
     loss = (z_flag_1 * torch.sqrt(torch.abs(out_s - out_t) + 1e-7) + z_flag_0 * (out_s - labels) ** 2).mean()
