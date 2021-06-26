@@ -97,7 +97,7 @@ PARAMS = {
     'is_random': False,
     'is_tor': True,
     'tor_lambda': 0.1,
-    'tor_zscore': 2.0
+    'tor_zscore': 2.5
 }
 
 
