@@ -234,7 +234,7 @@ def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, c
     if PARAMS['is_kd'] and cycle > 0:
         prev_cycle = cycle - 1
         teacher_model_path =f'{checkpoint_dir}/teacher_model_trial{trial}_cycle{prev_cycle}.pth'
-        models['teacher_backbone'] = resnet.ResNet18(num_classes=10)
+        models['teacher_backbone'] = resnet.ResNet18(num_classes=24)
         checkpoint = torch.load(teacher_model_path)
         models['teacher_backbone'].load_state_dict(checkpoint['state_dict_backbone'])
         models['teacher_backbone'].to(PARAMS['device'])
