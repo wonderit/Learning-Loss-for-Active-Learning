@@ -233,7 +233,7 @@ def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, c
     # load teacher model
     if PARAMS['is_kd'] and cycle > 0:
         prev_cycle = cycle - 1
-        teacher_model_path =f'{checkpoint_dir}/teacher_model_cycle{prev_cycle}.pth'
+        teacher_model_path =f'{checkpoint_dir}/teacher_model_trial{trial}_cycle{prev_cycle}.pth'
         models['teacher_backbone'] = resnet.ResNet18(num_classes=10)
         checkpoint = torch.load(teacher_model_path)
         models['teacher_backbone'].load_state_dict(checkpoint['state_dict_backbone'])
@@ -488,14 +488,13 @@ if __name__ == '__main__':
             dataloaders['train'] = DataLoader(cem_train, batch_size=PARAMS['batch_size'],
                                               sampler=SubsetRandomSampler(labeled_set),
                                               pin_memory=True)
-
-        # Save a checkpoint
-        torch.save({
-                    'trial': trial + 1,
-                    'state_dict_backbone': models['backbone'].state_dict(),
-                    'state_dict_module': models['module'].state_dict()
-                },
-                './models/active_resnet18_cem_trial{}.pth'.format(trial))
+            # Save a checkpoint
+            torch.save({
+                        'trial': trial + 1,
+                        'state_dict_backbone': models['backbone'].state_dict(),
+                        'state_dict_module': models['module'].state_dict()
+                    },
+                    f'{checkpoint_dir}/teacher_model_trial{trial}_cycle{cycle}.pth')
 
 
 # In[ ]:
