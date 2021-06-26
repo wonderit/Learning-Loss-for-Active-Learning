@@ -92,12 +92,12 @@ PARAMS = {
     'ua_type': 'prediction_loss',  # prediction_loss, cross_entropy
     're-init-backbone': True,
     're-init-module': False,
-    'is_tbr': False,
-    'tbr_lambda': 0.1,
+    'is_tbr': True,
+    'tbr_lambda': 0.5,
     'is_random': False,
-    'is_tor': True,
+    'is_tor': False,
     'tor_lambda': 0.1,
-    'tor_zscore': 2.5
+    'tor_zscore': 2.0
 }
 
 
