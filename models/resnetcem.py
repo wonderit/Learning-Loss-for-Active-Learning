@@ -91,7 +91,7 @@ class ResNet(nn.Module):
         # 4 -> 2 for cem
         out = F.avg_pool2d(out3, 4)
         out = out.view(out.size(0), -1)
-        out = F.sigmoid(self.linear(out))
+        out = self.linear(out)
         return out, [out1, out2, out3]
 
 
