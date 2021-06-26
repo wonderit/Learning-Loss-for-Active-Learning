@@ -82,7 +82,7 @@ PARAMS = {
     'weight_decay': 5e-4,
     'device': torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
     'kd_type': 'soft_target',
-    'is_kd': False,
+    'is_kd': True,
     'T': 4,
     'kd_lambda': 0.1,
     'is_ua': False,
