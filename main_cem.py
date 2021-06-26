@@ -290,7 +290,7 @@ def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, c
                 loss = loss + PARAMS['tbr_lambda'] * tbr_loss
                 run[f'train/trial{trial}/cycle{cycle}/batch/tbr_loss({PARAMS["tbr_lambda"]})'].log(tbr_loss.item())
 
-            if PARAMS['is_tbr']:
+            if PARAMS['is_tor']:
                 tor_loss = TeacherOutlierRejection(pred_loss, teacher_pred_loss, target_loss)
                 loss = loss + PARAMS['tor_lambda'] * tor_loss
                 run[f'train/trial{trial}/cycle{cycle}/batch/tor_loss({PARAMS["tor_lambda"]})'].log(tor_loss.item())
