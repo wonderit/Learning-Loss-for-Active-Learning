@@ -281,9 +281,9 @@ def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, c
             teacher_pred_loss = models['teacher_module'](teacher_feature)
             teacher_pred_loss = teacher_pred_loss.view(teacher_pred_loss.size(0))
 
-            kd_loss = SoftTarget(scores, teacher_outputs)
-            run[f'train/trial{trial}/cycle{cycle}/batch/kd_loss({PARAMS["kd_type"]})'].log(kd_loss.item())
-            loss = loss + PARAMS['kd_lambda'] * kd_loss
+            # kd_loss = SoftTarget(scores, teacher_outputs)
+            # run[f'train/trial{trial}/cycle{cycle}/batch/kd_loss({PARAMS["kd_type"]})'].log(kd_loss.item())
+            # loss = loss + PARAMS['kd_lambda'] * kd_loss
 
             if PARAMS['is_tbr']:
                 tbr_loss = TeacherBoundedLoss(pred_loss, teacher_pred_loss, target_loss)
