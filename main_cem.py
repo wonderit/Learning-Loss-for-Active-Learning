@@ -355,18 +355,18 @@ def train(models, criterion, optimizers, schedulers, dataloaders, num_epochs, ep
         schedulers['backbone'].step()
         schedulers['module'].step()
 
-        # Save a checkpoint
-        if PARAMS['is_kd'] and epoch % 5 == 4:
-            acc = test(models, dataloaders, 'test')
-            if best_acc < acc:
-                best_acc = acc
-                torch.save({
-                    'epoch': epoch + 1,
-                    'state_dict_backbone': models['backbone'].state_dict(),
-                    'state_dict_module': models['module'].state_dict()
-                },
-                f'{checkpoint_dir}/teacher_model_cycle{cycle_number}.pth')
-            print('Val Acc: {:.3f} \t Best Acc: {:.3f}'.format(acc, best_acc))
+        # # Save a checkpoint
+        # if PARAMS['is_kd'] and epoch % 5 == 4:
+        #     acc = test(models, dataloaders, 'test')
+        #     if best_acc < acc:
+        #         best_acc = acc
+        #         torch.save({
+        #             'epoch': epoch + 1,
+        #             'state_dict_backbone': models['backbone'].state_dict(),
+        #             'state_dict_module': models['module'].state_dict()
+        #         },
+        #         f'{checkpoint_dir}/teacher_model_cycle{cycle_number}.pth')
+        #     print('Val Acc: {:.3f} \t Best Acc: {:.3f}'.format(acc, best_acc))
 
     print('>> Finished.')
 
