@@ -70,7 +70,7 @@ PARAMS = {
     'batch_size': 128,
     'subset_size': 10000,
     'k': 200,
-    'margin': 1.0,
+    'margin': 0.01,
     'lpl_lambda': 1.0,
     'trials': 3,
     'cycles': 10,
@@ -82,7 +82,7 @@ PARAMS = {
     'weight_decay': 5e-4,
     'device': torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
     'kd_type': 'soft_target',
-    'is_kd': True,
+    'is_kd': False,
     'T': 4,
     'kd_lambda': 0.1,
     'is_ua': False,
@@ -90,12 +90,12 @@ PARAMS = {
     'ua_activation': 'sigmoid', # linear, relu
     'beta': 1.0,
     'ua_type': 'prediction_loss',  # prediction_loss, cross_entropy
-    're-init-backbone': True,
-    're-init-module': True,
+    're-init-backbone': False,
+    're-init-module': False,
     'is_tbr': False,
     'tbr_lambda': 0.5,
     'is_random': False,
-    'is_tor': True,
+    'is_tor': False,
     'tor_lambda': 0.1,
     'tor_zscore': 2.0
 }
