@@ -56,7 +56,7 @@ from sklearn.metrics import r2_score, mean_squared_error
 
 
 run = neptune.init(project='wonderit/maxwellfdfd-ll4al',
-                   tags=['margin0.1', 're-init', 'tbr0.5', 'tor0.1'],
+                   tags=['margin0.1', 're-init', 'tor0.1', 'tbr0.5'],
                    api_token='eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiI2ZmY3ZjczOC0wYWM2LTQzZGItOTNkZi02Y2Y3ZjkxMDZhZTgifQ==')
 
 
@@ -82,7 +82,7 @@ PARAMS = {
     'weight_decay': 5e-4,
     'device': torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
     'kd_type': 'soft_target',
-    'is_kd': False,
+    'is_kd': True,
     'T': 4,
     'kd_lambda': 0.1,
     'is_ua': False,
