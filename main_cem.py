@@ -97,7 +97,8 @@ PARAMS = {
     'is_random': False,
     'is_tor': False,
     'tor_lambda': 0.1,
-    'tor_zscore': 2.0
+    'tor_zscore': 2.0,
+    'server': 0,
 }
 
 
@@ -233,7 +234,7 @@ def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, c
     # load teacher model
     if PARAMS['is_kd'] and cycle > 0:
         prev_cycle = cycle - 1
-        teacher_model_path =f'{checkpoint_dir}/teacher_model_trial{trial}_cycle{prev_cycle}.pth'
+        teacher_model_path =f'{checkpoint_dir}/teacher_model_trial{trial}_cycle{prev_cycle}_server{PARAMS["server"]}.pth'
         models['teacher_backbone'] = resnet.ResNet18(num_classes=24)
         checkpoint = torch.load(teacher_model_path)
         models['teacher_backbone'].load_state_dict(checkpoint['state_dict_backbone'])
@@ -494,7 +495,7 @@ if __name__ == '__main__':
                         'state_dict_backbone': models['backbone'].state_dict(),
                         'state_dict_module': models['module'].state_dict()
                     },
-                    f'{checkpoint_dir}/teacher_model_trial{trial}_cycle{cycle}.pth')
+                    f'{checkpoint_dir}/teacher_model_trial{trial}_cycle{cycle}_server{PARAMS["server"]}.pth')
 
 
 # In[ ]:
