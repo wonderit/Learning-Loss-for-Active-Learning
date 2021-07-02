@@ -56,7 +56,7 @@ from sklearn.metrics import r2_score, mean_squared_error
 
 
 run = neptune.init(project='wonderit/maxwellfdfd-ll4al',
-                   tags=['margin0.0', 'sub2000', ],
+                   tags=['margin1.0', 'sub10000', 'reinit'],
                    api_token='eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiI2ZmY3ZjczOC0wYWM2LTQzZGItOTNkZi02Y2Y3ZjkxMDZhZTgifQ==')
 
 
@@ -68,9 +68,9 @@ PARAMS = {
     'num_train': 27000,
     'num_val': 0,
     'batch_size': 128,
-    'subset_size': 2000,
+    'subset_size': 10000,
     'k': 200,
-    'margin': 0.0,
+    'margin': 1.0,
     'lpl_lambda': 1.0,
     'trials': 3,
     'cycles': 10,
@@ -95,7 +95,7 @@ PARAMS = {
     'is_tbr': False,
     'tbr_lambda': 0.5,
     'is_random': False,
-    'is_tor': True,
+    'is_tor': False,
     'tor_lambda': 0.1,
     'tor_zscore': 2.0
 }
