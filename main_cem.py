@@ -56,7 +56,7 @@ from sklearn.metrics import r2_score, mean_squared_error
 
 
 run = neptune.init(project='wonderit/maxwellfdfd-ll4al',
-                   tags=['margin1.0', 'sub20000', 'reinit'],
+                   tags=['margin0.5', 'sub20000', 'reinit'],
                    api_token='eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiI2ZmY3ZjczOC0wYWM2LTQzZGItOTNkZi02Y2Y3ZjkxMDZhZTgifQ==')
 
 
@@ -70,7 +70,7 @@ PARAMS = {
     'batch_size': 128,
     'subset_size': 20000,
     'k': 200,
-    'margin': 1.0,
+    'margin': 0.5,
     'lpl_lambda': 1.0,
     'trials': 3,
     'cycles': 10,
