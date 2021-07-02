@@ -31,6 +31,7 @@ MANIFEST
 .vscode/settings.json
 *.pth
 .idea/
+csv/
 
 .neptune
 maxwellfdfd/
