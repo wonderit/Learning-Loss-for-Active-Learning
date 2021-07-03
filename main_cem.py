@@ -82,19 +82,13 @@ PARAMS = {
     'weight_decay': 5e-4,
     'device': torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
     'kd_type': 'soft_target',
-    'is_kd': False,
     'T': 4,
-    'kd_lambda': 0.1,
-    'is_ua': False,
-    'ua_lambda': 0.1,
-    'ua_activation': 'sigmoid', # linear, relu
-    'beta': 1.0,
-    'ua_type': 'prediction_loss',  # prediction_loss, cross_entropy
+    'is_random': False,
     're-init-backbone': True,
     're-init-module': True,
+    'is_kd': True,
     'is_tbr': False,
     'tbr_lambda': 0.5,
-    'is_random': False,
     'is_tor': True,
     'tor_lambda': 0.5,
     'tor_zscore': 2.0,
@@ -175,38 +169,6 @@ def LossPredLoss(input, target, margin=1.0, reduction='mean'):
     return loss
 
 
-def SoftTarget(out_s, out_t):
-    loss = F.kl_div(F.log_softmax(out_s/PARAMS['T'], dim=1),
-                    F.softmax(out_t/PARAMS['T'], dim=1)
-                    ,reduction='batchmean') * PARAMS['T'] * PARAMS['T']
-    return loss
-
-def UncertaintyAttentionLoss(t_output, t_pred_loss):
-
-    if PARAMS['ua_type'] == 'prediction_loss':
-        t_ua = t_pred_loss.mean()
-    else:
-        teacher_probs = F.softmax(t_output)
-        t_ua = torch.distributions.Categorical(teacher_probs).entropy().mean()
-
-    if PARAMS['ua_activation'] == 'sigmoid':
-        t_ua_norm = F.sigmoid(PARAMS['beta'] * t_ua)
-    elif PARAMS['ua_activation'] == 'relu':
-        t_ua_norm = F.relu(t_ua)
-    elif PARAMS['ua_activation'] == 'tanh':
-        t_ua_norm = F.tanh(t_ua)
-
-    return t_ua_norm, t_ua
-
-
-def ua_loss(outputs, labels, t_ua, beta, ua_lambda):
-    ua_attention = 1/(1 + torch.exp(- beta * t_ua))
-    log_softmax = torch.nn.LogSoftmax(dim=1)
-    x_log = log_softmax(outputs)
-    loss = (-x_log[range(labels.shape[0]), labels] * (1. + ua_lambda * ua_attention)).mean()
-    return loss
-
-
 def TeacherBoundedLoss(out_s, out_t, labels):
     mse_t = torch.abs(out_t - labels)
     mse_s = torch.abs(out_s - labels)
@@ -282,10 +244,6 @@ def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, c
             teacher_pred_loss = models['teacher_module'](teacher_feature)
             teacher_pred_loss = teacher_pred_loss.view(teacher_pred_loss.size(0))
 
-            # kd_loss = SoftTarget(scores, teacher_outputs)
-            # run[f'train/trial{trial}/cycle{cycle}/batch/kd_loss({PARAMS["kd_type"]})'].log(kd_loss.item())
-            # loss = loss + PARAMS['kd_lambda'] * kd_loss
-
             if PARAMS['is_tbr']:
                 tbr_loss = TeacherBoundedLoss(pred_loss, teacher_pred_loss, target_loss)
                 loss = loss + PARAMS['tbr_lambda'] * tbr_loss
@@ -295,12 +253,6 @@ def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, c
                 tor_loss = TeacherOutlierRejection(pred_loss, teacher_pred_loss, target_loss)
                 loss = loss + PARAMS['tor_lambda'] * tor_loss
                 run[f'train/trial{trial}/cycle{cycle}/batch/tor_loss({PARAMS["tor_lambda"]})'].log(tor_loss.item())
-
-            if PARAMS['is_ua']:
-                teacher_uncertainty_normalized, teacher_uncertainty = UncertaintyAttentionLoss(teacher_outputs, teacher_pred_loss)
-                loss = loss + PARAMS['ua_lambda'] * PARAMS['kd_lambda'] * kd_loss * teacher_uncertainty_normalized
-                run[f'train/trial{trial}/cycle{cycle}/batch/t_ua_{PARAMS["ua_type"]}'].log(teacher_uncertainty)
-                run[f'train/trial{trial}/cycle{cycle}/batch/t_ua_norm({PARAMS["ua_type"]}-b{PARAMS["beta"]})'].log(teacher_uncertainty_normalized)
 
         loss.backward()
         optimizers['backbone'].step()
