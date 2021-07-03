@@ -56,7 +56,7 @@ from sklearn.metrics import r2_score, mean_squared_error
 
 
 run = neptune.init(project='wonderit/maxwellfdfd-ll4al',
-                   tags=['margin0.1', 'sub20000', 're-init', 'tor0.5'],
+                   tags=['margin0.1', 'sub20000', 're-init', 'tor_l1_0.9'],
                    api_token='eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiI2ZmY3ZjczOC0wYWM2LTQzZGItOTNkZi02Y2Y3ZjkxMDZhZTgifQ==')
 
 
@@ -90,7 +90,7 @@ PARAMS = {
     'is_tbr': False,
     'tbr_lambda': 0.5,
     'is_tor': True,
-    'tor_lambda': 0.5,
+    'tor_lambda': 0.9,
     'tor_zscore': 2.0,
     'server': 0,
 }
@@ -181,7 +181,7 @@ def TeacherOutlierRejection(out_s, out_t, labels):
     mse_t = torch.abs(labels - out_t)
     z_flag_1 = ((mse_t - mse_t.mean()) / mse_t.std()) > PARAMS['tor_zscore']
     z_flag_0 = ((mse_t - mse_t.mean()) / mse_t.std()) <= PARAMS['tor_zscore']
-    loss = (z_flag_1 * torch.sqrt(torch.abs(out_s - out_t) + 1e-5) + z_flag_0 * (out_s - labels) ** 2).mean()
+    loss = (z_flag_1 * torch.sqrt(torch.abs(out_s - out_t) + 1e-7) + z_flag_0 * torch.abs(out_s - labels)).mean()
     return loss
 
 ##
