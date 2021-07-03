@@ -70,7 +70,7 @@ PARAMS = {
     'batch_size': 128,
     'subset_size': 20000,
     'k': 200,
-    'margin': 0.5,
+    'margin': 0.1,
     'lpl_lambda': 1.0,
     'trials': 3,
     'cycles': 10,
