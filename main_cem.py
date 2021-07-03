@@ -181,7 +181,7 @@ def TeacherOutlierRejection(out_s, out_t, labels):
     mse_t = torch.abs(labels - out_t)
     z_flag_1 = ((mse_t - mse_t.mean()) / mse_t.std()) > PARAMS['tor_zscore']
     z_flag_0 = ((mse_t - mse_t.mean()) / mse_t.std()) <= PARAMS['tor_zscore']
-    loss = (z_flag_1 * torch.sqrt(torch.abs(out_s - out_t) + 1e-7) + z_flag_0 * (out_s - labels) ** 2).mean()
+    loss = (z_flag_1 * torch.sqrt(torch.abs(out_s - out_t) + 1e-6) + z_flag_0 * (out_s - labels) ** 2).mean()
     return loss
 
 ##
