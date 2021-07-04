@@ -222,7 +222,7 @@ def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, c
         optimizers['module'].zero_grad()
 
         scores, features = models['backbone'](inputs.float())
-        target_loss = criterion(scores, labels)
+        target_loss = criterion(scores.float(), labels.float())
 
         if epoch > epoch_loss:
             # After 120 epochs, stop the gradient from the loss prediction module propagated to the target model.
