@@ -83,7 +83,7 @@ PARAMS = {
     'device': torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
     'kd_type': 'soft_target',
     'T': 4,
-    'is_random': False,
+    'is_random': True,
     're-init-backbone': True,
     're-init-module': True,
     'is_kd': False,
