@@ -261,6 +261,7 @@ def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, c
 
         run[f'train/trial{trial}/cycle{cycle}/batch/backbone_loss'].log(m_backbone_loss.item())
         run[f'train/trial{trial}/cycle{cycle}/batch/module_loss'].log(m_module_loss.item())
+        run[f'train/trial{trial}/cycle{cycle}/batch/module_l1_loss'].log(m_module_l1_loss.item())
         run[f'train/trial{trial}/cycle{cycle}/batch/total_loss'].log(loss.item())
 
 
