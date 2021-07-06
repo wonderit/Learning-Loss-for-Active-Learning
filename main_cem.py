@@ -56,7 +56,7 @@ from sklearn.metrics import r2_score, mean_squared_error
 
 
 run = neptune.init(project='wonderit/maxwellfdfd-ll4al',
-                   tags=['margin0.1', 'sub20000', 're-init', 'tor_l1_0.9', 'tbr_0.9'],
+                   tags=['margin0.1', 'sub20000', 're-init', 'm_l1_1.0', 'll'],
                    api_token='eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiI2ZmY3ZjczOC0wYWM2LTQzZGItOTNkZi02Y2Y3ZjkxMDZhZTgifQ==')
 
 
@@ -72,6 +72,7 @@ PARAMS = {
     'k': 200,
     'margin': 0.1,
     'lpl_lambda': 1.0,
+    'lpl_l1_lambda': 1.0,
     'trials': 3,
     'cycles': 10,
     'epoch': 200,
@@ -81,15 +82,14 @@ PARAMS = {
     'sgd_momentum': 0.9,
     'weight_decay': 5e-4,
     'device': torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
-    'kd_type': 'soft_target',
     'T': 4,
     'is_random': False,
     're-init-backbone': True,
     're-init-module': True,
-    'is_kd': True,
-    'is_tbr': True,
+    'is_kd': False,
+    'is_tbr': False,
     'tbr_lambda': 0.9,
-    'is_tor': True,
+    'is_tor': False,
     'tor_lambda': 0.9,
     'tor_zscore': 2.0,
     'server': 2,
@@ -237,7 +237,8 @@ def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, c
         target_loss = torch.mean(target_loss, dim=1)
         m_backbone_loss = torch.sum(target_loss) / target_loss.size(0)
         m_module_loss   = LossPredLoss(pred_loss, target_loss, margin=PARAMS['margin'])
-        loss            = m_backbone_loss + PARAMS['lpl_lambda'] * m_module_loss
+        m_module_l1_loss = nn.L1Loss()(pred_loss, target_loss)
+        loss            = m_backbone_loss + PARAMS['lpl_lambda'] * m_module_loss + PARAMS['lpl_l1_lambda'] * m_module_l1_loss
 
         if models.get('have_teacher', False):
             teacher_outputs, teacher_feature = models['teacher_backbone'](inputs.float())
