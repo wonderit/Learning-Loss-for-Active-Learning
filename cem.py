@@ -18,7 +18,7 @@ def unpickle(file):
 
 
 def compress_image(prev_image, n):
-    if n == 0:
+    if n < 2:
         return prev_image
 
     height = prev_image.shape[0] // n
