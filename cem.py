@@ -104,7 +104,7 @@ class CEMDataset(torch.utils.data.Dataset):
     def __init__(self,
                  root: str,
                 train: bool = True,
-                scale: int = 0,
+                scale: int = 1,
                  ) -> None:
         self.train = train
         self.root = root
