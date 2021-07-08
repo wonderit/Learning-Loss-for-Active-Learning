@@ -26,7 +26,7 @@ from sklearn.metrics import r2_score, mean_squared_error
 # Create Neptune Run
 
 run = neptune.init(project='wonderit/maxwellfdfd-ll4al',
-                   tags=['margin0.1', 'sub20000', 're-init', 'original_convnet', 'll'],
+                   tags=['margin0.1', 'sub20000', 're-init', 'original_convnet', 'll', '20x40'],
                    api_token='eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiI2ZmY3ZjczOC0wYWM2LTQzZGItOTNkZi02Y2Y3ZjkxMDZhZTgifQ==')
 
 # Params
