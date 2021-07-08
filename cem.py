@@ -109,6 +109,8 @@ class CEMDataset(torch.utils.data.Dataset):
         self.train = train
         self.root = root
         self.scale = scale
+        self.width = 200 // scale
+        self.height = 100 // scale
 
         if self.train:
             DATAPATH = os.path.join(root, 'train')
@@ -144,17 +146,10 @@ class CEMDataset(torch.utils.data.Dataset):
                     except:
                         continue
                 image = compress_image(image, self.scale)
-                # image = compress_image(image, 5)
                 self.data.append(np.array(image).flatten(order='C'))
-                # self.data.append(np.array(image))
 
-        # print(len(self.data), 'previous')
-        # print(np.vstack(self.data).shape, 'previous')
-        self.data = np.vstack(self.data).reshape(-1, 1, 20, 40)
-        # print(np.vstack(self.data).shape, 'middle')
+        self.data = np.vstack(self.data).reshape(-1, 1, self.height, self.width)
         self.data = self.data.transpose((0, 1, 2, 3))  # convert to HWC CHW
-        # print(self.data.shape, 'after')
-        # exit()
         print(f'Data Loading Finished. len : {len(self.data)}')
 
 
