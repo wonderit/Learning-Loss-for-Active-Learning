@@ -1,26 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# Active Learning Procedure in PyTorch.
-#
-# Reference:
-# [Yoo et al. 2019] Learning Loss for Active Learning (https://arxiv.org/abs/1905.03677)
-# '''
-
-# Install Neptune
-
-# In[1]:
-
-
-#!pip install -q neptune-client==0.9.9 numpy==1.19.2 torch==1.8.1 torchvision==0.9.1 folium==0.2.1
-
-
-# Install libraries
-
-# In[2]:
-
-
-# Python
 import os
 import random
 
@@ -32,10 +9,6 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 import torch.optim.lr_scheduler as lr_scheduler
 from torch.utils.data.sampler import SubsetRandomSampler
-
-# Torchvison
-import torchvision.transforms as T
-import torch.nn.functional as F
 
 # Utils
 from tqdm import tqdm
@@ -50,18 +23,9 @@ from cem import CEMDataset
 
 from sklearn.metrics import r2_score, mean_squared_error
 
-# Create Neptune Run
-
-# In[3]:
-
-
 run = neptune.init(project='wonderit/maxwellfdfd-ll4al',
-                   tags=['margin0.1', 'sub20000', 'no-init', 'l2', 'random'],
+                   tags=['margin0.1', 'sub20000', 'no-init', 'k500', 'll'],
                    api_token='eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiI2ZmY3ZjczOC0wYWM2LTQzZGItOTNkZi02Y2Y3ZjkxMDZhZTgifQ==')
-
-
-# In[4]:
-
 
 # Params
 PARAMS = {
@@ -69,7 +33,7 @@ PARAMS = {
     'num_val': 0,
     'batch_size': 128,
     'subset_size': 20000,
-    'k': 200,
+    'k': 500,
     'margin': 0.1,
     'lpl_lambda': 1.0,
     'trials': 3,
@@ -81,35 +45,21 @@ PARAMS = {
     'sgd_momentum': 0.9,
     'weight_decay': 5e-4,
     'device': torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
-    'kd_type': 'soft_target',
     'T': 4,
-    'is_random': True,
-    're-init-backbone': False,
-    're-init-module': False,
+    'is_random': False,
+    'is_ll': False,
+    're-init-backbone': True,
+    're-init-module': True,
     'is_kd': False,
     'is_tbr': False,
     'tbr_lambda': 0.9,
     'is_tor': False,
     'tor_lambda': 0.9,
     'tor_zscore': 2.0,
-    'server': 2,
+    'server': 7,
 }
 
-
-# In[5]:
-
-
 run['config/hyperparameters'] = PARAMS
-
-
-# In[ ]:
-
-
-
-
-
-# In[6]:
-
 
 # Seed
 random_seed = 425
@@ -120,14 +70,12 @@ torch.cuda.manual_seed_all(random_seed)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 np.random.seed(random_seed)
-
-##
 # Data
 data_dir = './maxwellfdfd'
 
-cem_train = CEMDataset('./maxwellfdfd', train=True, scale=5)
-cem_unlabeled = CEMDataset('./maxwellfdfd', train=True, scale=5)
-cem_test = CEMDataset('./maxwellfdfd', train=False, scale=5)
+cem_train = CEMDataset('./maxwellfdfd', train=True)
+cem_unlabeled = CEMDataset('./maxwellfdfd', train=True)
+cem_test = CEMDataset('./maxwellfdfd', train=False)
 
 dataset_size = {'train': len(cem_train), 'test': len(cem_test)}
 
@@ -135,16 +83,8 @@ checkpoint_dir = os.path.join('./cem', 'train', 'weights')
 if not os.path.exists(checkpoint_dir):
     os.makedirs(checkpoint_dir)
 
-
-# In[7]:
-
-
 run["config/dataset/path"] = data_dir
 run["config/dataset/size"] = dataset_size
-
-
-# In[ ]:
-
 
 ##
 # Loss Prediction Loss
@@ -222,7 +162,7 @@ def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, c
         optimizers['module'].zero_grad()
 
         scores, features = models['backbone'](inputs.float())
-        target_loss = criterion(scores.float(), labels.float())
+        target_loss = criterion(scores, labels)
 
         if epoch > epoch_loss:
             # After 120 epochs, stop the gradient from the loss prediction module propagated to the target model.
@@ -388,8 +328,7 @@ if __name__ == '__main__':
 
             # Loss, criterion and scheduler (re)initialization
             # criterion      = nn.CrossEntropyLoss(reduction='none')
-            # criterion = nn.L1Loss(reduction='none')
-            criterion = nn.MSELoss(reduction='none')
+            criterion = nn.L1Loss(reduction='none')
             optim_backbone = optim.SGD(models['backbone'].parameters(), lr=PARAMS['lr'],
                                     momentum=PARAMS['sgd_momentum'], weight_decay=PARAMS['weight_decay'])
             optim_module   = optim.SGD(models['module'].parameters(), lr=PARAMS['lr'],

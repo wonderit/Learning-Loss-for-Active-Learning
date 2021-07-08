@@ -18,6 +18,9 @@ def unpickle(file):
 
 
 def compress_image(prev_image, n):
+    if n == 0:
+        return prev_image
+
     height = prev_image.shape[0] // n
     width = prev_image.shape[1] // n
     new_image = np.zeros((height, width), dtype="uint8")
@@ -101,9 +104,11 @@ class CEMDataset(torch.utils.data.Dataset):
     def __init__(self,
                  root: str,
                 train: bool = True,
+                scale: int = 0,
                  ) -> None:
         self.train = train
         self.root = root
+        self.scale = scale
 
         if self.train:
             DATAPATH = os.path.join(root, 'train')
@@ -138,7 +143,8 @@ class CEMDataset(torch.utils.data.Dataset):
                         image = np.array(image, dtype=np.uint8)
                     except:
                         continue
-                image = compress_image(image, 5)
+                image = compress_image(image, self.scale)
+                # image = compress_image(image, 5)
                 self.data.append(np.array(image).flatten(order='C'))
                 # self.data.append(np.array(image))
 
@@ -161,16 +167,6 @@ class CEMDataset(torch.utils.data.Dataset):
             tuple: (image, target) where target is index of the target class.
         """
         img, target = self.data[index], self.targets[index]
-
-        # doing this so that it is consistent with all other datasets
-        # to return a PIL Image
-        # img = Image.fromarray(img)
-        #
-        # if self.transform is not None:
-        #     img = self.transform(img)
-        #
-        # if self.target_transform is not None:
-        #     target = self.target_transform(target)
 
         return img, target
 

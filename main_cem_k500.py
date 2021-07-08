@@ -125,9 +125,9 @@ np.random.seed(random_seed)
 # Data
 data_dir = './maxwellfdfd'
 
-cem_train = CEMDataset('./maxwellfdfd', train=True)
-cem_unlabeled = CEMDataset('./maxwellfdfd', train=True)
-cem_test = CEMDataset('./maxwellfdfd', train=False)
+cem_train = CEMDataset('./maxwellfdfd', train=True, scale=5)
+cem_unlabeled = CEMDataset('./maxwellfdfd', train=True, scale=5)
+cem_test = CEMDataset('./maxwellfdfd', train=False, scale=5)
 
 dataset_size = {'train': len(cem_train), 'test': len(cem_test)}
 

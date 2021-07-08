@@ -1,26 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# Active Learning Procedure in PyTorch.
-#
-# Reference:
-# [Yoo et al. 2019] Learning Loss for Active Learning (https://arxiv.org/abs/1905.03677)
-# '''
-
-# Install Neptune
-
-# In[1]:
-
-
-#!pip install -q neptune-client==0.9.9 numpy==1.19.2 torch==1.8.1 torchvision==0.9.1 folium==0.2.1
-
-
-# Install libraries
-
-# In[2]:
-
-
-# Python
 import os
 import random
 
@@ -33,16 +10,12 @@ from torch.utils.data import DataLoader
 import torch.optim.lr_scheduler as lr_scheduler
 from torch.utils.data.sampler import SubsetRandomSampler
 
-# Torchvison
-import torchvision.transforms as T
-import torch.nn.functional as F
-
 # Utils
 from tqdm import tqdm
 
 # Custom
-import models.resnetcem as resnet
-import models.lossnetcem as lossnet
+import models.convcem as convnet
+import models.lossconvcem as lossnet
 from data.sampler import SubsetSequentialSampler
 
 import neptune.new as neptune
@@ -52,16 +25,9 @@ from sklearn.metrics import r2_score, mean_squared_error
 
 # Create Neptune Run
 
-# In[3]:
-
-
 run = neptune.init(project='wonderit/maxwellfdfd-ll4al',
-                   tags=['margin0.1', 'sub20000', 'no-init', 'l2', 'random'],
+                   tags=['margin0.1', 'sub20000', 're-init', 'original_convnet', 'll'],
                    api_token='eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiI2ZmY3ZjczOC0wYWM2LTQzZGItOTNkZi02Y2Y3ZjkxMDZhZTgifQ==')
-
-
-# In[4]:
-
 
 # Params
 PARAMS = {
@@ -72,6 +38,7 @@ PARAMS = {
     'k': 200,
     'margin': 0.1,
     'lpl_lambda': 1.0,
+    'lpl_l1_lambda': 0,
     'trials': 3,
     'cycles': 10,
     'epoch': 200,
@@ -81,11 +48,10 @@ PARAMS = {
     'sgd_momentum': 0.9,
     'weight_decay': 5e-4,
     'device': torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
-    'kd_type': 'soft_target',
     'T': 4,
-    'is_random': True,
-    're-init-backbone': False,
-    're-init-module': False,
+    'is_random': False,
+    're-init-backbone': True,
+    're-init-module': True,
     'is_kd': False,
     'is_tbr': False,
     'tbr_lambda': 0.9,
@@ -96,20 +62,7 @@ PARAMS = {
 }
 
 
-# In[5]:
-
-
 run['config/hyperparameters'] = PARAMS
-
-
-# In[ ]:
-
-
-
-
-
-# In[6]:
-
 
 # Seed
 random_seed = 425
@@ -125,9 +78,9 @@ np.random.seed(random_seed)
 # Data
 data_dir = './maxwellfdfd'
 
-cem_train = CEMDataset('./maxwellfdfd', train=True, scale=5)
-cem_unlabeled = CEMDataset('./maxwellfdfd', train=True, scale=5)
-cem_test = CEMDataset('./maxwellfdfd', train=False, scale=5)
+cem_train = CEMDataset('./maxwellfdfd', train=True)
+cem_unlabeled = CEMDataset('./maxwellfdfd', train=True)
+cem_test = CEMDataset('./maxwellfdfd', train=False)
 
 dataset_size = {'train': len(cem_train), 'test': len(cem_test)}
 
@@ -197,7 +150,7 @@ def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, c
     if PARAMS['is_kd'] and cycle > 0:
         prev_cycle = cycle - 1
         teacher_model_path =f'{checkpoint_dir}/teacher_model_trial{trial}_cycle{prev_cycle}_server{PARAMS["server"]}.pth'
-        models['teacher_backbone'] = resnet.ResNet18(num_classes=24)
+        models['teacher_backbone'] = convnet.ConvNet(num_classes=24)
         checkpoint = torch.load(teacher_model_path)
         models['teacher_backbone'].load_state_dict(checkpoint['state_dict_backbone'])
         models['teacher_backbone'].to(PARAMS['device'])
@@ -222,14 +175,14 @@ def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, c
         optimizers['module'].zero_grad()
 
         scores, features = models['backbone'](inputs.float())
-        target_loss = criterion(scores.float(), labels.float())
+        target_loss = criterion(scores, labels)
 
         if epoch > epoch_loss:
             # After 120 epochs, stop the gradient from the loss prediction module propagated to the target model.
             features[0] = features[0].detach()
             features[1] = features[1].detach()
             features[2] = features[2].detach()
-            # features[3] = features[3].detach()
+            features[3] = features[3].detach()
         pred_loss = models['module'](features)
         pred_loss = pred_loss.view(pred_loss.size(0))
 
@@ -237,7 +190,8 @@ def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, c
         target_loss = torch.mean(target_loss, dim=1)
         m_backbone_loss = torch.sum(target_loss) / target_loss.size(0)
         m_module_loss   = LossPredLoss(pred_loss, target_loss, margin=PARAMS['margin'])
-        loss            = m_backbone_loss + PARAMS['lpl_lambda'] * m_module_loss
+        m_module_l1_loss = nn.L1Loss()(pred_loss, target_loss)
+        loss            = m_backbone_loss + PARAMS['lpl_lambda'] * m_module_loss + PARAMS['lpl_l1_lambda'] * m_module_l1_loss
 
         if models.get('have_teacher', False):
             teacher_outputs, teacher_feature = models['teacher_backbone'](inputs.float())
@@ -260,6 +214,7 @@ def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, c
 
         run[f'train/trial{trial}/cycle{cycle}/batch/backbone_loss'].log(m_backbone_loss.item())
         run[f'train/trial{trial}/cycle{cycle}/batch/module_loss'].log(m_module_loss.item())
+        run[f'train/trial{trial}/cycle{cycle}/batch/module_l1_loss'].log(m_module_l1_loss.item())
         run[f'train/trial{trial}/cycle{cycle}/batch/total_loss'].log(loss.item())
 
 
@@ -363,9 +318,9 @@ if __name__ == '__main__':
         dataloaders  = {'train': train_loader, 'test': test_loader}
 
         # Model
-        resnet18    = resnet.ResNet18(num_classes=24).to(PARAMS['device'])
+        cem_convnet    = convnet.ConvNet(num_classes=24).to(PARAMS['device'])
         loss_module = lossnet.LossNet().to(PARAMS['device'])
-        models      = {'backbone': resnet18, 'module': loss_module}
+        models      = {'backbone': cem_convnet, 'module': loss_module}
 
         # Add Teacher for KD
         if PARAMS['is_kd']:
@@ -379,8 +334,8 @@ if __name__ == '__main__':
         for cycle in range(PARAMS['cycles']):
             # Re init model
             if PARAMS['re-init-backbone'] and cycle > 0:
-                resnet18    = resnet.ResNet18(num_classes=24).to(PARAMS['device'])
-                models['backbone'] = resnet18
+                cem_convnet    = convnet.ConvNet(num_classes=24).to(PARAMS['device'])
+                models['backbone'] = cem_convnet
 
             if PARAMS['re-init-module'] and cycle > 0:
                 loss_module = lossnet.LossNet().to(PARAMS['device'])
@@ -388,8 +343,7 @@ if __name__ == '__main__':
 
             # Loss, criterion and scheduler (re)initialization
             # criterion      = nn.CrossEntropyLoss(reduction='none')
-            # criterion = nn.L1Loss(reduction='none')
-            criterion = nn.MSELoss(reduction='none')
+            criterion = nn.L1Loss(reduction='none')
             optim_backbone = optim.SGD(models['backbone'].parameters(), lr=PARAMS['lr'],
                                     momentum=PARAMS['sgd_momentum'], weight_decay=PARAMS['weight_decay'])
             optim_module   = optim.SGD(models['module'].parameters(), lr=PARAMS['lr'],
@@ -449,9 +403,6 @@ if __name__ == '__main__':
                         'state_dict_module': models['module'].state_dict()
                     },
                     f'{checkpoint_dir}/teacher_model_trial{trial}_cycle{cycle}_server{PARAMS["server"]}.pth')
-
-
-# In[ ]:
 
 
 run.stop()
