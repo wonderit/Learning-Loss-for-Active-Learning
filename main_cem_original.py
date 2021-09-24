@@ -26,7 +26,7 @@ from sklearn.metrics import r2_score, mean_squared_error
 # Create Neptune Run
 
 run = neptune.init(project='wonderit/maxwellfdfd-ll4al',
-                   tags=['margin0.1', 'sub20000', 're-init', 'original_convnet', 'll'],
+                   tags=['margin0.1', 'sub20000', 're-init', 'original_convnet', 'll', '20x40'],
                    api_token='eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiI2ZmY3ZjczOC0wYWM2LTQzZGItOTNkZi02Y2Y3ZjkxMDZhZTgifQ==')
 
 # Params
@@ -78,9 +78,9 @@ np.random.seed(random_seed)
 # Data
 data_dir = './maxwellfdfd'
 
-cem_train = CEMDataset('./maxwellfdfd', train=True)
-cem_unlabeled = CEMDataset('./maxwellfdfd', train=True)
-cem_test = CEMDataset('./maxwellfdfd', train=False)
+cem_train = CEMDataset('./maxwellfdfd', train=True, scale=5)
+cem_unlabeled = CEMDataset('./maxwellfdfd', train=True, scale=5)
+cem_test = CEMDataset('./maxwellfdfd', train=False, scale=5)
 
 dataset_size = {'train': len(cem_train), 'test': len(cem_test)}
 
