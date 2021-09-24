@@ -359,7 +359,8 @@ if __name__ == '__main__':
 
             # Loss, criterion and scheduler (re)initialization
             # criterion      = nn.CrossEntropyLoss(reduction='none')
-            criterion = nn.L1Loss(reduction='none')
+            criterion = nn.MSELoss(size_average=None, reduce=None, reduction='mean')
+            #criterion = nn.L1Loss(reduction='none')
             optim_backbone = optim.SGD(models['backbone'].parameters(), lr=PARAMS['lr'],
                                     momentum=PARAMS['sgd_momentum'], weight_decay=PARAMS['weight_decay'])
             optim_module   = optim.SGD(models['module'].parameters(), lr=PARAMS['lr'],
