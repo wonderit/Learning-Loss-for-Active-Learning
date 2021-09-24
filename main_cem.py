@@ -38,7 +38,7 @@ PARAMS = {
     'k': 200,
     'margin': 0.1,
     'lpl_lambda': 1.0,
-    'lpl_l1_lambda': 1.0,
+    'lpl_l1_lambda': 0.0,
     'trials': 3,
     'cycles': 10,
     'epoch': 200,
@@ -52,13 +52,13 @@ PARAMS = {
     'is_random': False,
     're-init-backbone': True,
     're-init-module': True,
-    'is_kd': False,
-    'is_tbr': False,
+    'is_kd': True,
+    'is_tbr': True,
     'tbr_lambda': 0.9,
-    'is_tor': False,
+    'is_tor': True,
     'tor_lambda': 0.9,
     'tor_zscore': 2.0,
-    'server': 2,
+    'server': 0,
 }
 
 
@@ -136,18 +136,21 @@ def LossPredLoss(input, target, margin=1.0, reduction='mean'):
 
 
 def TeacherBoundedLoss(out_s, out_t, labels):
-    mse_t = torch.abs(out_t - labels)
-    mse_s = torch.abs(out_s - labels)
+    mse_t = (out_t - labels) ** 2
+    mse_s = (out_s - labels) ** 2
+    mse_t_s = (out_t - out_s) ** 2
     flag = (mse_s - mse_t) > 0
-    loss = (flag * mse_s).mean()
+    # TBR edited
+    loss = (flag * mse_t_s).mean()
     return loss
 
 
 def TeacherOutlierRejection(out_s, out_t, labels):
-    mse_t = torch.abs(labels - out_t)
+    mse_t = (labels - out_t) ** 2
+    mse_s = (out_s - labels) ** 2
     z_flag_1 = ((mse_t - mse_t.mean()) / mse_t.std()) > PARAMS['tor_zscore']
     z_flag_0 = ((mse_t - mse_t.mean()) / mse_t.std()) <= PARAMS['tor_zscore']
-    loss = (z_flag_1 * torch.sqrt(torch.abs(out_s - out_t) + 1e-7) + z_flag_0 * torch.abs(out_s - labels)).mean()
+    loss = (z_flag_1 * torch.sqrt(torch.abs(out_s - out_t) + 1e-7) + z_flag_0 * mse_s).mean()
     return loss
 
 ##
