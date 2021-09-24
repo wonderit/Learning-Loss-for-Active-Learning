@@ -26,7 +26,7 @@ from sklearn.metrics import r2_score, mean_squared_error
 # Create Neptune Run
 
 run = neptune.init(project='wonderit/maxwellfdfd-ll4al',
-                   tags=['margin0.1', 'sub20000', 're-init', 'original_convnet', 'll', '20x40'],
+                   tags=['margin0.1', 'sub20000', 're-init', 'original_convnet', 'll', '20x40', 'new-tbr'],
                    api_token='eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiI2ZmY3ZjczOC0wYWM2LTQzZGItOTNkZi02Y2Y3ZjkxMDZhZTgifQ==')
 
 # Params
@@ -52,10 +52,10 @@ PARAMS = {
     'is_random': False,
     're-init-backbone': True,
     're-init-module': True,
-    'is_kd': False,
-    'is_tbr': False,
+    'is_kd': True,
+    'is_tbr': True,
     'tbr_lambda': 0.9,
-    'is_tor': False,
+    'is_tor': True,
     'tor_lambda': 0.9,
     'tor_zscore': 2.0,
     'server': 2,
@@ -123,18 +123,21 @@ def LossPredLoss(input, target, margin=1.0, reduction='mean'):
 
 
 def TeacherBoundedLoss(out_s, out_t, labels):
-    mse_t = torch.abs(out_t - labels)
-    mse_s = torch.abs(out_s - labels)
-    flag = (mse_s - mse_t) > 0
-    loss = (flag * mse_s).mean()
+    l1_t = torch.abs(out_t - labels)
+    l1_s = torch.abs(out_s - labels)
+    l1_t_s = torch.abs(out_t - out_s)
+    flag = (l1_s - l1_t) > 0
+    # TBR edited
+    loss = (flag * l1_t_s).mean()
     return loss
 
 
 def TeacherOutlierRejection(out_s, out_t, labels):
-    mse_t = torch.abs(labels - out_t)
-    z_flag_1 = ((mse_t - mse_t.mean()) / mse_t.std()) > PARAMS['tor_zscore']
-    z_flag_0 = ((mse_t - mse_t.mean()) / mse_t.std()) <= PARAMS['tor_zscore']
-    loss = (z_flag_1 * torch.sqrt(torch.abs(out_s - out_t) + 1e-7) + z_flag_0 * torch.abs(out_s - labels)).mean()
+    l1_t = torch.abs(labels - out_t)
+    l1_s = torch.abs(out_s - labels)
+    z_flag_1 = ((l1_t - l1_t.mean()) / l1_t.std()) > PARAMS['tor_zscore']
+    z_flag_0 = ((l1_t - l1_t.mean()) / l1_t.std()) <= PARAMS['tor_zscore']
+    loss = (z_flag_1 * torch.sqrt(torch.abs(out_s - out_t) + 1e-7) + z_flag_0 * l1_s).mean()
     return loss
 
 ##
