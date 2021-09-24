@@ -26,7 +26,7 @@ from sklearn.metrics import r2_score, mean_squared_error
 # Create Neptune Run
 
 run = neptune.init(project='wonderit/maxwellfdfd-ll4al',
-                   tags=['margin0.1', 'sub20000', 're-init', 'm_l1_1.0', 'll'],
+                   tags=['margin0.1', 'sub20000', 're-init', 'new-tbr', 'll'],
                    api_token='eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiI2ZmY3ZjczOC0wYWM2LTQzZGItOTNkZi02Y2Y3ZjkxMDZhZTgifQ==')
 
 # Params
@@ -91,9 +91,9 @@ np.random.seed(random_seed)
 # Data
 data_dir = './maxwellfdfd'
 
-cem_train = CEMDataset('./maxwellfdfd', train=True, scale=5)
-cem_unlabeled = CEMDataset('./maxwellfdfd', train=True, scale=5)
-cem_test = CEMDataset('./maxwellfdfd', train=False, scale=5)
+cem_train = CEMDataset(data_dir, train=True, scale=5)
+cem_unlabeled = CEMDataset(data_dir, train=True, scale=5)
+cem_test = CEMDataset(data_dir, train=False, scale=5)
 
 dataset_size = {'train': len(cem_train), 'test': len(cem_test)}
 
@@ -138,7 +138,7 @@ def LossPredLoss(input, target, margin=1.0, reduction='mean'):
 def TeacherBoundedLoss(out_s, out_t, labels):
     l1_t = torch.abs(out_t - labels)
     l1_s = torch.abs(out_s - labels)
-    l1_t_s = (out_t - out_s) ** 2
+    l1_t_s = torch.abs(out_t - out_s)
     flag = (l1_s - l1_t) > 0
     # TBR edited
     loss = (flag * l1_t_s).mean()
