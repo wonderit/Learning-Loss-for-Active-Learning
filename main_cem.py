@@ -136,21 +136,21 @@ def LossPredLoss(input, target, margin=1.0, reduction='mean'):
 
 
 def TeacherBoundedLoss(out_s, out_t, labels):
-    mse_t = (out_t - labels) ** 2
-    mse_s = (out_s - labels) ** 2
-    mse_t_s = (out_t - out_s) ** 2
-    flag = (mse_s - mse_t) > 0
+    l1_t = torch.abs(out_t - labels)
+    l1_s = torch.abs(out_s - labels)
+    l1_t_s = (out_t - out_s) ** 2
+    flag = (l1_s - l1_t) > 0
     # TBR edited
-    loss = (flag * mse_t_s).mean()
+    loss = (flag * l1_t_s).mean()
     return loss
 
 
 def TeacherOutlierRejection(out_s, out_t, labels):
-    mse_t = (labels - out_t) ** 2
-    mse_s = (out_s - labels) ** 2
-    z_flag_1 = ((mse_t - mse_t.mean()) / mse_t.std()) > PARAMS['tor_zscore']
-    z_flag_0 = ((mse_t - mse_t.mean()) / mse_t.std()) <= PARAMS['tor_zscore']
-    loss = (z_flag_1 * torch.sqrt(torch.abs(out_s - out_t) + 1e-7) + z_flag_0 * mse_s).mean()
+    l1_t = torch.abs(labels - out_t)
+    l1_s = torch.abs(out_s - labels)
+    z_flag_1 = ((l1_t - l1_t.mean()) / l1_t.std()) > PARAMS['tor_zscore']
+    z_flag_0 = ((l1_t - l1_t.mean()) / l1_t.std()) <= PARAMS['tor_zscore']
+    loss = (z_flag_1 * torch.sqrt(torch.abs(out_s - out_t) + 1e-7) + z_flag_0 * l1_s).mean()
     return loss
 
 ##
@@ -359,8 +359,7 @@ if __name__ == '__main__':
 
             # Loss, criterion and scheduler (re)initialization
             # criterion      = nn.CrossEntropyLoss(reduction='none')
-            criterion = nn.MSELoss(size_average=None, reduce=None, reduction='none')
-            #criterion = nn.L1Loss(reduction='none')
+            criterion = nn.L1Loss(reduction='none')
             optim_backbone = optim.SGD(models['backbone'].parameters(), lr=PARAMS['lr'],
                                     momentum=PARAMS['sgd_momentum'], weight_decay=PARAMS['weight_decay'])
             optim_module   = optim.SGD(models['module'].parameters(), lr=PARAMS['lr'],
