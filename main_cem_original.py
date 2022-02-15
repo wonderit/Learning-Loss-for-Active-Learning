@@ -31,10 +31,10 @@ run = neptune.init(project='wonderit/maxwellfdfd-ll4al',
 
 # Params
 PARAMS = {
-    'num_train': 27000,
+    'num_train': 500,
     'num_val': 0,
     'batch_size': 128,
-    'subset_size': 20000,
+    'subset_size': 200,
     'k': 200,
     'margin': 0.1,
     'lpl_lambda': 1.0,
@@ -76,11 +76,11 @@ np.random.seed(random_seed)
 
 ##
 # Data
-data_dir = './maxwellfdfd'
+data_dir = './data'
 
-cem_train = CEMDataset('./maxwellfdfd', train=True, scale=5)
-cem_unlabeled = CEMDataset('./maxwellfdfd', train=True, scale=5)
-cem_test = CEMDataset('./maxwellfdfd', train=False, scale=5)
+cem_train = CEMDataset(data_dir, train=True)
+cem_unlabeled = CEMDataset(data_dir, train=True)
+cem_test = CEMDataset(data_dir, train=False)
 
 dataset_size = {'train': len(cem_train), 'test': len(cem_test)}
 

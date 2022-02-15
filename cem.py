@@ -1,20 +1,12 @@
 import numpy as np
 import pandas as pd
-import pickle
 import os
 
 import torch.utils.data
 from PIL import Image
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Tuple
 
 from torch.utils.data import DataLoader
-
-
-def unpickle(file):
-    fo = open(file, 'rb')
-    dict = pickle.load(fo, encoding='latin1')
-    fo.close()
-    return dict['data'], dict['labels']
 
 
 def compress_image(prev_image, n):
